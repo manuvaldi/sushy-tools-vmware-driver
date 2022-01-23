@@ -11,7 +11,7 @@ drivers.
 Systems resource
 ----------------
 
-For *Systems* resource, emulator maintains two drivers relying on
+For *Systems* resource, emulator maintains three drivers relying on
 a virtualization backend to emulate bare metal machines by means of
 virtual machines.
 
@@ -285,6 +285,100 @@ And flip its power state via the Redfish call:
 
 You can have as many OpenStack instances as you need. The instances can be
 concurrently managed over Redfish and functionally similar tools.
+
+Systems resource driver: VMware vSphere
++++++++++++++++++++++++++++++++++++++++
+
+You can use VMware vSphere as a Virtualization backend. Both ESXi and vCenter
+are supported. 
+
+There are several methods to create virtual machines in vSphere such as
+using the vSphere UI, `Ansible VMware Collection <https://github.com/ansible-collections/community.vmware>`_,
+or the `Python VMware vSphere API <https://github.com/vmware/pyvmomi>`_.
+
+It is up to the user how to deploy the virtual machines and not the resource driver.
+
+Starting up the Virtual BMC
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Start the Redfish virtual BMC using the vmware group params.It will listen at
+*localhost:8000* (by default):
+
+.. code-block:: bash
+
+   sushy-emulator --vmware-driver --vmware-host 192.168.1.92 --vmware-port 443 --vmware-username root --vmware-password 'welcome1' --vmware-vmedia-datastore datastore01
+    * Running on http://localhost:8000/ (Press CTRL+C to quit)
+
+.. list-table:: VMware vSphere Driver Parameters
+   :widths: 30 70
+   :header-rows: 1
+
+   * - Parameter
+     - Description
+   * - --vmware-driver
+     - This flag enables the vmware driver.
+   * - --vmware-host
+     - The ESXi or vCenter hostname
+   * - --vmware-port
+     - The ESXi or vCenter listening port
+   * - --vmware-username
+     - The ESXi or vCenter username 
+   * - --vmware-password
+     - The ESXi or vCenter password
+   * - --vmware-vmedia-datastore
+     - The datastore which will be used to save the uploaded virtual media images. A directory named vmedia will be created in the root of the datastore to store the images.
+
+Using the Redfish API
+~~~~~~~~~~~~~~~~~~~~~
+
+The redfish api can be used per DMTF standard. The ComputerSystem name is the name of the
+virtual machine or its UUID.
+
+e.g. flip power state via the Redfish call:
+
+.. code-block:: bash
+
+   curl -d '{"ResetType":"On"}' \
+       -H "Content-Type: application/json" -X POST \
+        http://localhost:8000/redfish/v1/Systems/vmware-vm-name/Actions/ComputerSystem.Reset
+
+   curl -d '{"ResetType":"ForceOff"}' \
+       -H "Content-Type: application/json" -X POST \
+        http://localhost:8000/redfish/v1/Systems/564dde36-e437-e15c-4ac9-4a9673244413/Actions/ComputerSystem.Reset
+
+Virtual Media
+~~~~~~~~~~~~~~~~~~~
+
+Cd (ISO) and Floppy (raw images) are supported.
+They are stored in the vmedia folder in the datastore passed in the --vmware-vmedia-datastore
+command line parameter.
+
+See *VirtualMedia* resource section for more information on how to perform
+virtual media boot.
+
+Limitations
+~~~~~~~~~~~
+
+vSphere vCenter allows Virtual Machines with the same name to co-exist provided they
+are deployed on different folders in a Data Center.
+
+This complicates the lookup of a Virtual Machine by name, as the concept of a folder is not 
+supported by the Redfish standard. If two Virtual Machines have the same name then the 
+first found will be used in a redfish api call. It is assumed that two VMs will not have 
+the same name due to infrastructure naming conventions. 
+
+Unsupported Operations
+~~~~~~~~~~~~~~~~~~~~~~
+
+* BIOS Settings - VMware vSphere API does not support setting BIOS Settings
+* Volumes - Volumes are not implemented in this release
+
+Supported vSphere Versions
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* The resource driver has been tested in vSphere 6.7 and 7.0.2 using pyvmomi==7.0.1
+* Continuity of support is based on the Compatibility Policy in https://pypi.org/project/pyvmomi/
+
 
 Managers resource
 -----------------

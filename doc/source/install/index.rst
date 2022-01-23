@@ -25,6 +25,7 @@ for the corresponding drivers to become operational are:
 
 * `libvirt-python` for the libvirt driver
 * `openstacksdk` for the nova driver
+* `pyvmomi` for the vmware vsphere driver
 
 .. note::
 

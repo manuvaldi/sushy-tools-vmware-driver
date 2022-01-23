@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Adds Systems Driver for VMware vSphere (ESXi and vCenter).

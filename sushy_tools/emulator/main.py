@@ -35,6 +35,7 @@ from sushy_tools.emulator.resources import managers as mgrdriver
 from sushy_tools.emulator.resources import storage as stgdriver
 from sushy_tools.emulator.resources.systems import libvirtdriver
 from sushy_tools.emulator.resources.systems import novadriver
+from sushy_tools.emulator.resources.systems import vmwaredriver
 from sushy_tools.emulator.resources import vmedia as vmddriver
 from sushy_tools.emulator.resources import volumes as voldriver
 from sushy_tools import error
@@ -96,8 +97,25 @@ class Application(flask.Flask):
     @memoize.memoize()
     def systems(self):
         os_cloud = self.config.get('SUSHY_EMULATOR_OS_CLOUD')
+        vmware = self.config.get('SUSHY_EMULATOR_VMWARE_DRIVER')
 
-        if os_cloud:
+        if (vmware):
+            if not vmwaredriver.is_loaded:
+                self.logger.error('VMware driver not loaded')
+                sys.exit(1)
+
+            vmware_uri = self.config.get('SUSHY_EMULATOR_VMWARE_HOST')
+            vmware_port = self.config.get('SUSHY_EMULATOR_VMWARE_PORT')
+            vmware_username = self.config.get('SUSHY_EMULATOR_VMWARE_USERNAME')
+            vmware_password = self.config.get('SUSHY_EMULATOR_VMWARE_PASSWORD')
+            vmware_vmedia_datastore = \
+                self.config.get('SUSHY_EMULATOR_VMWARE_VMEDIA_DATASTORE')
+
+            result = vmwaredriver.VmwareDriver.initialize(
+                self.config, self.logger, vmware_uri, int(vmware_port),
+                vmware_username, vmware_password, vmware_vmedia_datastore)()
+
+        elif os_cloud:
             if not novadriver.is_loaded:
                 self.logger.error('Nova driver not loaded')
                 sys.exit(1)
@@ -763,6 +781,42 @@ def parse_args():
                                     'environment variable '
                                     'SUSHY_EMULATOR_LIBVIRT_URI. '
                                     'Default is qemu:///system')
+    backend_group.add_argument('--vmware-driver',
+                               action='store_true',
+                               help='Flag to indicate to use vmware hypervisor'
+                                    ' as backend. Can also be set via '
+                                    'environment variable '
+                                    'SUSHY_EMULATOR_VMWARE_DRIVER. '
+                                    'Default is False')
+
+    vmware_group = parser.add_argument_group('VMware')
+    vmware_group.add_argument('--vmware-host',
+                              type=str,
+                              help='The VMware Backend Host. It can be an'
+                                   ' ESXi or vCenter Host. Can also be set'
+                                   ' via environment variable '
+                                   'SUSHY_EMULATOR_VMWARE_HOST. ')
+    vmware_group.add_argument('--vmware-port',
+                              type=int,
+                              help='The VMware Backend Port. Can also be set'
+                                   ' via environment variable '
+                                   'SUSHY_EMULATOR_VMWARE_PORT.')
+    vmware_group.add_argument('--vmware-username',
+                              type=str,
+                              help='The VMware Backend Username. Can also be'
+                                   ' set via environment variable '
+                                   'SUSHY_EMULATOR_VMWARE_USERNAME. ')
+    vmware_group.add_argument('--vmware-password',
+                              type=str,
+                              help='The VMware Backend Password. Can also'
+                                   ' be set via environment variable '
+                                   'SUSHY_EMULATOR_VMWARE_PASSWORD. ')
+    vmware_group.add_argument('--vmware-vmedia-datastore',
+                              type=str,
+                              help='The VMware Datastore that will store the'
+                                   ' VirtualMedia Images. Can also be set'
+                                   ' via environment variable '
+                                   'SUSHY_EMULATOR_VMWARE_VMEDIA_DATASTORE. ')
 
     return parser.parse_args()
 
@@ -774,6 +828,54 @@ def main():
     app.debug = args.debug
 
     app.configure(config_file=args.config)
+
+    NOVA = "Nova"
+    LIBVIRT = "Libvirt"
+    VMWARE = "VMware"
+
+    # Check for mutual exclusive driver settings in the conf file.
+    config_drivers = []
+
+    if "SUSHY_EMULATOR_OS_CLOUD" in app.config.keys() and \
+        app.config['SUSHY_EMULATOR_OS_CLOUD'] is not None:
+        config_drivers.append(NOVA)
+    if "SUSHY_EMULATOR_LIBVIRT_URI" in app.config.keys() and \
+        app.config['SUSHY_EMULATOR_LIBVIRT_URI'] is not None:
+        config_drivers.append(LIBVIRT)
+    if "SUSHY_EMULATOR_VMWARE_DRIVER" in app.config.keys() and \
+        app.config['SUSHY_EMULATOR_VMWARE_DRIVER']:  # True/False Parameter
+        config_drivers.append(VMWARE)
+
+    # Only one driver can be configured
+    # In case of zero we rely on command line args for configuration
+    if len(config_drivers) > 1:
+        mut_ex_drv_list = ', '.join(config_drivers)
+        error_msg = "Drivers {0} are mutually exclusive. Please " \
+                    "review the configuration file".format(mut_ex_drv_list)
+        raise error.FishyError(error_msg)
+
+    args_driver = None
+    # Check that the user is not enabling a different driver at command
+    # line from the config file. Only one can be enabled as they are part
+    # of a mutually exclusive group
+    if args.os_cloud:
+        args_driver = NOVA
+    if args.libvirt_uri:
+        args_driver = LIBVIRT
+    if args.vmware_driver:
+        args_driver = VMWARE
+
+    if len(config_drivers) == 1 and args_driver is not None:
+        if args_driver not in config_drivers:
+            mut_ex_drv_list = '{0},{1}'.format(config_drivers[0],
+                                               args_driver)
+            error_msg = "Drivers {0} are mutually exclusive. You have " \
+                        "specified {1} at the config file and {2} at " \
+                        "command line arguments. Please review the config." \
+                        .format(mut_ex_drv_list,
+                                config_drivers[0],
+                                args_driver)
+            raise error.FishyError(error_msg)
 
     if args.os_cloud:
         app.config['SUSHY_EMULATOR_OS_CLOUD'] = args.os_cloud
@@ -787,6 +889,87 @@ def main():
             envvar = os.environ.get(envvar)
             if envvar:
                 app.config['SUSHY_EMULATOR_LIBVIRT_URI'] = envvar
+
+    # Validate that vmware params are not used with another driver
+    # Check that the --vmware-driver is not present and that
+    # SUSHY_EMULATOR_VMWARE_DRIVER is False or not present
+    # when a config file is used.
+    # If any vmware param is present when the above are absent raise error.
+    if (VMWARE != args_driver
+            and VMWARE not in config_drivers):
+        if (args.vmware_host or args.vmware_port
+                or args.vmware_username or args.vmware_password
+                or args.vmware_vmedia_datastore):
+            error_mgs = 'VMware args cannot be used with another driver.' \
+                        'You need to use --vmware-driver or set ' \
+                        'SUSHY_EMULATOR_VMWARE_DRIVER in conf file to True'
+            raise error.FishyError(error_mgs)
+
+    # Override configuration file parameters if they have been
+    # provided at command line.
+    # Check if vmware driver is loaded at command line or at the config file.
+    if (args.vmware_driver
+            or ('SUSHY_EMULATOR_VMWARE_DRIVER' in app.config.keys()
+                and app.config['SUSHY_EMULATOR_VMWARE_DRIVER'] is True)):
+        if args.vmware_driver:
+            app.config['SUSHY_EMULATOR_VMWARE_DRIVER'] = args.vmware_driver
+
+        if args.vmware_host:
+            app.config['SUSHY_EMULATOR_VMWARE_HOST'] = args.vmware_host
+
+        if args.vmware_port:
+            app.config['SUSHY_EMULATOR_VMWARE_PORT'] = args.vmware_port
+
+        if args.vmware_username:
+            app.config['SUSHY_EMULATOR_VMWARE_USERNAME'] = args.vmware_username
+
+        if args.vmware_password:
+            app.config['SUSHY_EMULATOR_VMWARE_PASSWORD'] = args.vmware_password
+
+        if args.vmware_vmedia_datastore:
+            app.config['SUSHY_EMULATOR_VMWARE_VMEDIA_DATASTORE'] = \
+                args.vmware_vmedia_datastore
+
+        # Check that all VMware parameters are set.
+        # All are required. We cannot check this in the
+        # argument parsing, as we will not be able to overrride
+        # params set in the configuration file at the command line.
+        # No defaults for VMware vSphere.
+        vmware_args_missing = False
+        error_msg = ""
+
+        if "SUSHY_EMULATOR_VMWARE_HOST" not in app.config.keys() or \
+            app.config['SUSHY_EMULATOR_VMWARE_HOST'] is None:
+            error_msg += "SUSHY_EMULATOR_VMWARE_HOST, "
+            vmware_args_missing = True
+
+        if "SUSHY_EMULATOR_VMWARE_PORT" not in app.config.keys() or \
+            app.config['SUSHY_EMULATOR_VMWARE_PORT'] is None:
+            error_msg += "SUSHY_EMULATOR_VMWARE_PORT, "
+            vmware_args_missing = True
+
+        if "SUSHY_EMULATOR_VMWARE_USERNAME" not in app.config.keys() or \
+            app.config['SUSHY_EMULATOR_VMWARE_USERNAME'] is None:
+            error_msg += "SUSHY_EMULATOR_VMWARE_USERNAME, "
+            vmware_args_missing = True
+
+        if "SUSHY_EMULATOR_VMWARE_PASSWORD" not in app.config.keys() or \
+            app.config['SUSHY_EMULATOR_VMWARE_PASSWORD'] is None:
+            error_msg += "SUSHY_EMULATOR_VMWARE_PASSWORD, "
+            vmware_args_missing = True
+
+        if "SUSHY_EMULATOR_VMWARE_VMEDIA_DATASTORE" not in app.config.keys() \
+            or \
+            app.config['SUSHY_EMULATOR_VMWARE_VMEDIA_DATASTORE'] is None:
+            error_msg += "SUSHY_EMULATOR_VMWARE_VMEDIA_DATASTORE, "
+            vmware_args_missing = True
+
+        if vmware_args_missing:
+            # Remove the trailing comma and space.
+            error_msg = error_msg[:-2]
+            error_msg += " missing. Please specify them at the config" \
+                         " file or at command line."
+            raise error.FishyError(error_msg)
 
     if args.interface:
         app.config['SUSHY_EMULATOR_LISTEN_IP'] = args.interface
