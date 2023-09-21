@@ -1,4 +1,6 @@
-# Sushy-Tools with VMWARE Driver
+Sushy-Tools with VMWARE Driver
+================
+
 
 This repo comes from the [fork](https://github.com/ppetrou/sushy-tools-vmware-driver) . It's a sushy-tool modification which supports VMWARE and Vsphere directly.
 
@@ -9,11 +11,16 @@ I've only added:
 - CLI deployment
 - K8s Deployment
 
-## Image
+Image
+-----------
+
+
 
 You can use the image from `quay.io/mvalledi/sushy-tools-vmware:latest`
 
-## Standalone use
+Standalone use
+-----------
+
 
 - Create a `sushy-emulator.conf` config file
 
@@ -23,7 +30,9 @@ You can use the image from `quay.io/mvalledi/sushy-tools-vmware:latest`
 podman run -d -p8000:8000 --name sushy-vmware -v $PWD:/etc/sushy sushyimage:latest sushy-emulator -i ::  --config /etc/sushy/sushy-emulator.conf
 ```
 
-## k8s Deployment
+K8s Deployment
+-----------
+
 
 Look file in deployment folder
 
@@ -32,7 +41,8 @@ Look file in deployment folder
 
 
 
-## Redfish development tools
+Redfish development tools
+-----------
 
 
 This is a set of simple simulation tools aiming at supporting the
