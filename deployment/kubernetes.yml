@@ -1,0 +1,86 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sushy-tools
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sushy-config
+  namespace: sushy-tools
+data:
+  sushy-emulator.conf: |-
+    SUSHY_EMULATOR_LISTEN_IP = u'0.0.0.0'
+    SUSHY_EMULATOR_LISTEN_PORT = 8000
+    SUSHY_EMULATOR_SSL_CERT = None
+    SUSHY_EMULATOR_SSL_KEY = None
+    SUSHY_EMULATOR_OS_CLOUD = None
+    SUSHY_EMULATOR_VMWARE_DRIVER = True
+    SUSHY_EMULATOR_VMWARE_HOST = u'10.10.10.10'
+    SUSHY_EMULATOR_VMWARE_PORT = 443
+    SUSHY_EMULATOR_VMWARE_USERNAME = u'xxxx@vsphere.local'
+    SUSHY_EMULATOR_VMWARE_PASSWORD = u'xxxxxxxx'
+    SUSHY_EMULATOR_VMWARE_VMEDIA_DATASTORE = u'nvme-datastore'
+    # The following is required to be "True" for ZTP installations
+    SUSHY_EMULATOR_IGNORE_BOOT_DEVICE = True
+    SUSHY_EMULATOR_BOOT_LOADER_MAP = {
+        u'UEFI': {
+            u'x86_64': u'/usr/share/OVMF/OVMF_CODE.secboot.fd'
+        },
+        u'Legacy': {
+            u'x86_64': None
+        }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sushy-tools
+  namespace: sushy-tools
+  labels:
+    app: sushy-tools
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sushy-tools
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: sushy-tools
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: sushy-server
+          image: quay.io/mvalledi/sushy-tools-vmware:latest
+          command: ["sushy-emulator", "-i", "::", "--config", "/etc/sushy/sushy-emulator.conf"]
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+              hostPort: 8000
+          volumeMounts:
+            - name: sushy-config
+              mountPath: /etc/sushy
+      volumes:
+      - name: sushy-config
+        configMap:
+          name: sushy-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sushy-tools
+  namespace: sushy-tools
+spec:
+  selector:
+    app: sushy-tools
+  ports:
+    - name: port-tcp-8000
+      protocol: TCP
+      port: 8000
+      targetPort: 8000
+  type: LoadBalancer

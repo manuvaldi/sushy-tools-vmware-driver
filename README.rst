@@ -1,6 +1,39 @@
-=========================
-Redfish development tools
-=========================
+# Sushy-Tools with VMWARE Driver
+
+This repo comes from the [fork](https://github.com/ppetrou/sushy-tools-vmware-driver) . It's a sushy-tool modification which supports VMWARE and Vsphere directly.
+
+KUDOS https://github.com/ppetrou/sushy-tools-vmware-driver
+
+I've only added:
+- Containerfile and image build
+- CLI deployment
+- K8s Deployment
+
+## Image
+
+You can use the image from `quay.io/mvalledi/sushy-tools-vmware:latest`
+
+## Standalone use
+
+- Create a `sushy-emulator.conf` config file
+
+- Run
+
+```
+podman run -d -p8000:8000 --name sushy-vmware -v $PWD:/etc/sushy sushyimage:latest sushy-emulator -i ::  --config /etc/sushy/sushy-emulator.conf
+```
+
+## k8s Deployment
+
+Look file in deployment folder
+
+
+
+
+
+
+## Redfish development tools
+
 
 This is a set of simple simulation tools aiming at supporting the
 development and testing of the Redfish protocol implementations and,
