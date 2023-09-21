@@ -15,8 +15,32 @@ You can use the image from `quay.io/mvalledi/sushy-tools-vmware:latest`
 
 ## Standalone use
 
-- Create a `sushy-emulator.conf` config file
+- Create a `sushy-emulator.conf` config file. Example:
 
+```
+SUSHY_EMULATOR_LISTEN_IP = u'0.0.0.0'
+SUSHY_EMULATOR_LISTEN_PORT = 8000
+SUSHY_EMULATOR_SSL_CERT = None
+SUSHY_EMULATOR_SSL_KEY = None
+SUSHY_EMULATOR_OS_CLOUD = None
+SUSHY_EMULATOR_VMWARE_DRIVER = True
+# vmware ESX or vSphere
+SUSHY_EMULATOR_VMWARE_HOST = u'10.10.10.10'
+SUSHY_EMULATOR_VMWARE_PORT = 443
+SUSHY_EMULATOR_VMWARE_USERNAME = u'xxxx@vsphere.local'
+SUSHY_EMULATOR_VMWARE_PASSWORD = u'xxxxxxxx'
+SUSHY_EMULATOR_VMWARE_VMEDIA_DATASTORE = u'nvme-datastore'
+# The following is required to be "True" for ZTP installations
+SUSHY_EMULATOR_IGNORE_BOOT_DEVICE = True
+SUSHY_EMULATOR_BOOT_LOADER_MAP = {
+    u'UEFI': {
+        u'x86_64': u'/usr/share/OVMF/OVMF_CODE.secboot.fd'
+    },
+    u'Legacy': {
+        u'x86_64': None
+    }
+}
+```    
 - Run
 
 ```
