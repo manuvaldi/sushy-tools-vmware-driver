@@ -16,7 +16,7 @@
 from collections import defaultdict
 from enum import Enum
 import os
-
+import ssl
 import requests
 
 from sushy_tools.emulator import constants
@@ -27,7 +27,7 @@ vmware_loaded = True
 
 try:
     from pyVim.connect import Disconnect
-    from pyVim.connect import SmartConnectNoSSL
+    from pyVim.connect import SmartConnect
     from pyVmomi import vim
 except ImportError:
     vmware_loaded = False
@@ -93,9 +93,13 @@ class VmwareOpen(object):
 
     def __enter__(self):
         try:
-            self._service_instance = SmartConnectNoSSL(
+            sslContext = ssl.create_default_context(
+                purpose=ssl.Purpose.CLIENT_AUTH)
+            sslContext.verify_mode = ssl.CERT_NONE
+            self._service_instance = SmartConnect(
                 host=self._host, user=self._username,
-                pwd=self._password, port=self._port)
+                pwd=self._password, port=self._port,
+                sslContext=sslContext)
             return self._service_instance
 
         except IOError as e:
