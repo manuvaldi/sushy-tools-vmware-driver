@@ -556,6 +556,8 @@ class VmwareDriver(AbstractSystemsDriver):
                         self._username, self._password) as service_instance:
             vm = self._get_vm(identity, service_instance)
 
+            print("QUESTION ID: %s" % (vm.runtime.question.id))
+            
             if vm.summary.runtime.powerState == 'poweredOn':
                 return 'On'
             elif vm.summary.runtime.powerState == 'poweredOff':
