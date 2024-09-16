@@ -134,7 +134,7 @@ class VirtualMediaTestCase(test_main.EmulatorTestCase):
         response = self.app.patch(
             '/redfish/v1/Managers/%s/VirtualMedia/CD' % self.uuid)
 
-        self.assertEqual(400, response.status_code)
+        self.assertEqual(415, response.status_code)
 
     def test_virtual_media_insert(self, managers_mock, vmedia_mock):
         response = self.app.post(
@@ -144,8 +144,9 @@ class VirtualMediaTestCase(test_main.EmulatorTestCase):
 
         self.assertEqual(204, response.status_code)
 
-        vmedia_mock.return_value.insert_image.called_once_with(
-            'CD', 'http://fish.iso', True, False)
+        vmedia_mock.return_value.insert_image.assert_called_once_with(
+            self.uuid, 'CD', 'http://fish.iso', True, True,
+            username='', password='')
 
     def test_virtual_media_eject(self, managers_mock, vmedia_mock):
         response = self.app.post(
@@ -155,7 +156,8 @@ class VirtualMediaTestCase(test_main.EmulatorTestCase):
 
         self.assertEqual(204, response.status_code)
 
-        vmedia_mock.return_value.eject_image.called_once_with('CD')
+        vmedia_mock.return_value.eject_image.assert_called_once_with(
+            self.uuid, 'CD')
 
     def test_virtual_media_certificates(self, managers_mock, vmedia_mock):
         vmedia_mock.return_value.list_certificates.return_value = [
@@ -170,7 +172,7 @@ class VirtualMediaTestCase(test_main.EmulatorTestCase):
         for index, member in enumerate(response.json['Members']):
             self.assertTrue(member['@odata.id'].endswith(
                 f'/redfish/v1/Managers/{self.uuid}/VirtualMedia/CD'
-                f'/Certificates/{index+1}'), member['@odata.id'])
+                f'/Certificates/{index + 1}'), member['@odata.id'])
         self.assertEqual(['PEM'],
                          response.json['@Redfish.SupportedCertificates'])
 

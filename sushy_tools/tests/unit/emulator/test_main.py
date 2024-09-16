@@ -671,7 +671,7 @@ class StorageTestCase(EmulatorTestCase):
                                  'Volumes', json=data)
 
         self.assertEqual(201, response.status_code)
-        self.assertEqual('http://localhost/redfish/v1/Systems/vmc-node/'
+        self.assertEqual('/redfish/v1/Systems/vmc-node/'
                          'Storage/1/Volumes/13087010612',
                          response.headers['Location'])
 

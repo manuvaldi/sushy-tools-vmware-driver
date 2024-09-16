@@ -17,6 +17,7 @@ from collections import defaultdict
 from enum import Enum
 import os
 import ssl
+
 import requests
 
 from sushy_tools.emulator import constants
@@ -510,7 +511,8 @@ class VmwareDriver(AbstractSystemsDriver):
                         self._username, self._password) as service_instance:
 
             vmlist = self._get_vms(service_instance)
-            return [vm.summary.config.uuid for vm in vmlist]
+            # return [vm.summary.config.uuid for vm in vmlist]
+            return [vm.summary.config.name for vm in vmlist]
 
     def uuid(self, identity):
         """Get computer system UUID

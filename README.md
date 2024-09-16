@@ -4,10 +4,13 @@ This repo comes from the [fork](https://github.com/ppetrou/sushy-tools-vmware-dr
 
 KUDOS https://github.com/ppetrou/sushy-tools-vmware-driver
 
-I've only added:
+My contributions to the code:
 - Containerfile and image build
+- Update some dependencies
+- Update pyvmomi for supporting vsphere 8.x
 - CLI deployment
 - K8s Deployment
+- Show VM Names instead of UUID in `/redfish/v1/Systems/`
 
 ## Image
 
@@ -44,7 +47,7 @@ SUSHY_EMULATOR_BOOT_LOADER_MAP = {
 - Run
 
 ```
-podman run -d -p8000:8000 --name sushy-vmware -v $PWD:/etc/sushy sushyimage:latest sushy-emulator -i ::  --config /etc/sushy/sushy-emulator.conf
+podman run -d -p8000:8000 --name sushy-vmware -v $PWD:/etc/sushy quay.io/mvalledi/sushy-tools-vmware:latest sushy-emulator -i ::  --config /etc/sushy/sushy-emulator.conf
 ```
 
 ## k8s Deployment

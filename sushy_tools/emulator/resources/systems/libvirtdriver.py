@@ -685,7 +685,9 @@ class LibvirtDriver(AbstractSystemsDriver):
     def _process_bios(self, identity,
                       bios_attributes=DEFAULT_BIOS_ATTRIBUTES,
                       update_existing_attributes=False):
-        """Process Libvirt domain XML for BIOS attributes and update it if necessary
+        """Process Libvirt domain XML for BIOS attributes and update it if
+            necessary
+
 
         :param identity: libvirt domain name or ID
         :param bios_attributes: Full list of BIOS attributes to use if
@@ -696,6 +698,7 @@ class LibvirtDriver(AbstractSystemsDriver):
 
         :raises: `error.FishyError` if BIOS attributes cannot be saved
         """
+
         domain = self._get_domain(identity)
 
         result = self._process_bios_attributes(
